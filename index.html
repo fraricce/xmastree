@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Christmas Scene</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+            font-family: Arial, sans-serif;
+        }
+        #canvas {
+            width: 100%;
+            height: 100vh;
+            display: block;
+        }
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        🎄 Christmas Scene<br>
+        🖱️ Click & drag to rotate<br>
+        🔍 Scroll to zoom
+    </div>
+    <canvas id="canvas"></canvas>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x001133);
+        scene.fog = new THREE.Fog(0x001133, 30, 100);
+        
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 5, 15);
+        camera.lookAt(0, 3, 0);
+        
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        
+        // Lights
+        const ambient = new THREE.AmbientLight(0xffffff, 0.4);
+        scene.add(ambient);
+        
+        const light = new THREE.DirectionalLight(0xffffff, 0.8);
+        light.position.set(5, 10, 5);
+        scene.add(light);
+        
+        const pointLight = new THREE.PointLight(0xffff00, 1, 20);
+        pointLight.position.set(0, 7, 0);
+        scene.add(pointLight);
+        
+        // Ground
+        const ground = new THREE.Mesh(
+            new THREE.PlaneGeometry(30, 30),
+            new THREE.MeshStandardMaterial({ color: 0xffffff })
+        );
+        ground.rotation.x = -Math.PI / 2;
+        scene.add(ground);
+        
+        // Christmas Tree
+        const tree = new THREE.Group();
+        
+        // Tree trunk
+        const trunk = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.3, 0.4, 2, 8),
+            new THREE.MeshStandardMaterial({ color: 0x4a2511 })
+        );
+        trunk.position.y = 1;
+        tree.add(trunk);
+        
+        // Tree layers
+        const layers = [
+            { y: 2.5, r1: 0, r2: 2, h: 2 },
+            { y: 4, r1: 0, r2: 1.5, h: 2 },
+            { y: 5.3, r1: 0, r2: 1, h: 1.5 }
+        ];
+        
+        layers.forEach(l => {
+            const cone = new THREE.Mesh(
+                new THREE.ConeGeometry(l.r2, l.h, 8),
+                new THREE.MeshStandardMaterial({ color: 0x0a5c0a })
+            );
+            cone.position.y = l.y;
+            tree.add(cone);
+        });
+        
+        // Star on top
+        const star = new THREE.Mesh(
+            new THREE.SphereGeometry(0.3, 8, 8),
+            new THREE.MeshStandardMaterial({ 
+                color: 0xffff00,
+                emissive: 0xffff00,
+                emissiveIntensity: 0.5
+            })
+        );
+        star.position.y = 6.5;
+        tree.add(star);
+        
+        // Ornaments
+        const ornamentColors = [0xff0000, 0x0000ff, 0xffd700, 0xff69b4];
+        for (let i = 0; i < 15; i++) {
+            const ornament = new THREE.Mesh(
+                new THREE.SphereGeometry(0.15, 8, 8),
+                new THREE.MeshStandardMaterial({ 
+                    color: ornamentColors[Math.floor(Math.random() * ornamentColors.length)],
+                    metalness: 0.5,
+                    roughness: 0.3
+                })
+            );
+            const angle = Math.random() * Math.PI * 2;
+            const radius = Math.random() * 1.5;
+            const height = 2 + Math.random() * 3;
+            ornament.position.set(
+                Math.cos(angle) * radius,
+                height,
+                Math.sin(angle) * radius
+            );
+            tree.add(ornament);
+        }
+        
+        scene.add(tree);
+        
+        // Snow particles
+        const snowCount = 2000;
+        const snowGeo = new THREE.BufferGeometry();
+        const snowPos = [];
+        
+        for (let i = 0; i < snowCount; i++) {
+            snowPos.push(
+                Math.random() * 40 - 20,
+                Math.random() * 30,
+                Math.random() * 40 - 20
+            );
+        }
+        
+        snowGeo.setAttribute('position', new THREE.Float32BufferAttribute(snowPos, 3));
+        
+        const snowMat = new THREE.PointsMaterial({
+            color: 0xffffff,
+            size: 0.1,
+            transparent: true,
+            opacity: 0.8
+        });
+        
+        const snow = new THREE.Points(snowGeo, snowMat);
+        scene.add(snow);
+        
+        // Mouse controls
+        let isDragging = false;
+        let prevX = 0, prevY = 0;
+        let rotY = 0, rotX = 0.3;
+        let distance = 15;
+        
+        canvas.addEventListener('mousedown', e => {
+            isDragging = true;
+            prevX = e.clientX;
+            prevY = e.clientY;
+        });
+        
+        canvas.addEventListener('mousemove', e => {
+            if (isDragging) {
+                const dx = e.clientX - prevX;
+                const dy = e.clientY - prevY;
+                rotY += dx * 0.005;
+                rotX += dy * 0.005;
+                rotX = Math.max(-1.2, Math.min(1.2, rotX));
+                prevX = e.clientX;
+                prevY = e.clientY;
+            }
+        });
+        
+        canvas.addEventListener('mouseup', () => isDragging = false);
+        canvas.addEventListener('mouseleave', () => isDragging = false);
+        
+        canvas.addEventListener('wheel', e => {
+            e.preventDefault();
+            distance += e.deltaY * 0.01;
+            distance = Math.max(8, Math.min(30, distance));
+        });
+        
+        // Touch controls
+        let touchStartX = 0, touchStartY = 0;
+        
+        canvas.addEventListener('touchstart', e => {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        });
+        
+        canvas.addEventListener('touchmove', e => {
+            e.preventDefault();
+            const dx = e.touches[0].clientX - touchStartX;
+            const dy = e.touches[0].clientY - touchStartY;
+            rotY += dx * 0.005;
+            rotX += dy * 0.005;
+            rotX = Math.max(-1.2, Math.min(1.2, rotX));
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        });
+        
+        // Animation
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Update camera position
+            camera.position.x = distance * Math.sin(rotY) * Math.cos(rotX);
+            camera.position.y = distance * Math.sin(rotX) + 5;
+            camera.position.z = distance * Math.cos(rotY) * Math.cos(rotX);
+            camera.lookAt(0, 3, 0);
+            
+            // Animate snow
+            const positions = snow.geometry.attributes.position.array;
+            for (let i = 0; i < snowCount; i++) {
+                positions[i * 3 + 1] -= 0.05;
+                if (positions[i * 3 + 1] < 0) {
+                    positions[i * 3 + 1] = 30;
+                }
+            }
+            snow.geometry.attributes.position.needsUpdate = true;
+            
+            // Rotate tree slowly
+            tree.rotation.y += 0.002;
+            
+            // Twinkle star
+            star.material.emissiveIntensity = 0.5 + Math.sin(Date.now() * 0.005) * 0.3;
+            
+            renderer.render(scene, camera);
+        }
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        animate();
+    </script>
+</body>
+</html>
